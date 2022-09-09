@@ -116,7 +116,7 @@ abstract class BaseFragment<V : BaseViewModel, B : ViewBinding> : Fragment() {
         fragmentScope.cancelCoroutines()
     }
 
-    fun navigateTo(@IdRes resId: Int, args: Bundle? = null) {
+    fun pushTo(@IdRes resId: Int, args: Bundle? = null) {
         binding.root.findNavController().currentDestination?.getAction(resId)?.navOptions?.let {
             binding.root.findNavController().navigate(
                 resId,
@@ -136,7 +136,7 @@ abstract class BaseFragment<V : BaseViewModel, B : ViewBinding> : Fragment() {
         }
     }
 
-    fun navigateFadeTo(@IdRes resId: Int, args: Bundle? = null) {
+    fun pushFadeTo(@IdRes resId: Int, args: Bundle? = null) {
         binding.root.findNavController().currentDestination?.getAction(resId)?.navOptions?.let {
             binding.root.findNavController().navigate(
                 resId,
@@ -154,7 +154,10 @@ abstract class BaseFragment<V : BaseViewModel, B : ViewBinding> : Fragment() {
         }
     }
 
-    fun pop() {
-        binding.root.findNavController().popBackStack()
+    fun popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
+        binding.root.findNavController().apply {
+            if (destinationId == null) popBackStack()
+            else popBackStack(destinationId, inclusive)
+        }
     }
 }
