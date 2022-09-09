@@ -1,4 +1,4 @@
-package com.example.gurume_go_android.view.empty
+package com.example.baseandroid.view.empty
 
 import android.graphics.Color
 import android.os.Bundle

@@ -2,7 +2,7 @@ package com.example.baseandroid.resource.injection
 
 import android.content.Context
 import com.example.baseandroid.BuildConfig
-import com.example.baseandroid.data.local.Settings
+import com.example.baseandroid.data.local.SharedPref
 import com.example.baseandroid.resource.utils.isInternetAvailable
 import dagger.Module
 import dagger.Provides
@@ -55,8 +55,8 @@ class AuthInterceptor @Inject constructor() : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val newChain = chain.request().newBuilder()
             .addHeader("accept", "application/json")
-        if (!Settings.getInstance().getToken().isNullOrEmpty()) {
-            newChain.addHeader("Authorization", "Bearer ${Settings.getInstance().getToken()!!}")
+        if (!SharedPref.getInstance().getToken().isNullOrEmpty()) {
+            newChain.addHeader("Authorization", "Bearer ${SharedPref.getInstance().getToken()!!}")
         }
         return chain.proceed(newChain.build())
     }

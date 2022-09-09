@@ -6,6 +6,6 @@
 
     <fragment
         android:id="@+id/emptyFragment"
-        android:name="com.example.gurume_go_android.view.empty.EmptyFragment"
+        android:name="com.example.baseandroid.view.empty.EmptyFragment"
         android:label="EmptyFragment" />
 </navigation>
