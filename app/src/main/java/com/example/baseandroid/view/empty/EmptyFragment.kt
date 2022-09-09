@@ -5,7 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.fragment.app.viewModels
-import com.example.baseandroid.application.base.BaseFragment
+import com.example.baseandroid.application.base.BaseVMFragment
 import com.example.baseandroid.application.base.BaseViewModel
 import com.example.baseandroid.databinding.FragmentEmptyBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -13,7 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class EmptyFragment : BaseFragment<EmptyFragmentViewModel, FragmentEmptyBinding>() {
+class EmptyFragment : BaseVMFragment<EmptyFragmentViewModel, FragmentEmptyBinding>() {
 
     override val viewModel: EmptyFragmentViewModel by viewModels()
 

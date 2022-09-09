@@ -11,7 +11,7 @@ import androidx.viewbinding.ViewBinding
 import com.example.baseandroid.databinding.FragmentStubBinding
 
 abstract class BaseViewStubFragment<V : BaseViewModel, OB : ViewBinding> :
-    BaseFragment<V, FragmentStubBinding>() {
+    BaseVMFragment<V, FragmentStubBinding>() {
     private var hasInflated = false
 
     lateinit var originBinding: OB

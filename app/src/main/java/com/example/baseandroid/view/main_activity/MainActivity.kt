@@ -2,7 +2,7 @@ package com.example.baseandroid.view.main_activity
 
 import android.os.Bundle
 import androidx.activity.viewModels
-import com.example.baseandroid.application.base.BaseActivity
+import com.example.baseandroid.application.base.BaseVMActivity
 import com.example.baseandroid.application.base.BaseViewModel
 import com.example.baseandroid.data.network.APIRequest
 import com.example.baseandroid.databinding.ActivityMainTabbarBinding
@@ -11,7 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : BaseActivity<MainViewModel, ActivityMainTabbarBinding>() {
+class MainActivity : BaseVMActivity<MainViewModel, ActivityMainTabbarBinding>() {
 
     override val viewModel: MainViewModel by viewModels()
 

@@ -4,19 +4,15 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
-import com.example.baseandroid.databinding.CollectionDemoBinding
 import com.example.baseandroid.application.base.BaseFragment
-import com.example.baseandroid.application.base.BaseViewModel
+import com.example.baseandroid.databinding.CollectionDemoBinding
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class TabbarFragment @Inject constructor(private val fragments: List<Fragment>) : BaseFragment<BaseViewModel, CollectionDemoBinding>() {
+class TabbarFragment @Inject constructor(private val fragments: List<Fragment>) : BaseFragment<CollectionDemoBinding>() {
 
     private lateinit var collectionAdapter: CollectionPagerAdapter
-
-    override val viewModel: BaseViewModel by viewModels()
 
     val currentSelectedPosition: Int
         get() = binding.pager.currentItem

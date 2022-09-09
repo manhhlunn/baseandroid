@@ -6,13 +6,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.viewbinding.ViewBinding
 import com.example.baseandroid.resource.customView.ProgressView
 
-abstract class BaseActivity<V : BaseViewModel, B : ViewBinding> : AppCompatActivity() {
-
+abstract class BaseActivity<B : ViewBinding> : AppCompatActivity() {
     val activityScope: CoroutineLauncher by lazy {
         return@lazy CoroutineLauncher()
     }
-
-    abstract val viewModel: V
 
     var progress: ProgressView? = null
 
@@ -25,9 +22,6 @@ abstract class BaseActivity<V : BaseViewModel, B : ViewBinding> : AppCompatActiv
         makeViewBinding()
         setContentView(binding.root)
         setupView(savedInstanceState)
-        viewModel.isShowProgress.observe(this) { isShow ->
-            showProgress(isShow)
-        }
     }
 
     open fun makeViewBinding() {}
@@ -43,6 +37,22 @@ abstract class BaseActivity<V : BaseViewModel, B : ViewBinding> : AppCompatActiv
 //            }?.start()
 //    }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        activityScope.cancelCoroutines()
+    }
+}
+
+abstract class BaseVMActivity<VM : BaseViewModel, B : ViewBinding> : BaseActivity<B>() {
+    abstract val viewModel: VM
+
+    override fun setupView(savedInstanceState: Bundle?) {
+        super.setupView(savedInstanceState)
+        viewModel.isShowProgress.observe(this) { isShow ->
+            showProgress(isShow)
+        }
+    }
+
     private fun showProgress(isShow: Boolean) {
         if (isShow) {
             if (progress == null) {
@@ -56,10 +66,5 @@ abstract class BaseActivity<V : BaseViewModel, B : ViewBinding> : AppCompatActiv
             progress?.dismiss()
             progress = null
         }
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        activityScope.cancelCoroutines()
     }
 }

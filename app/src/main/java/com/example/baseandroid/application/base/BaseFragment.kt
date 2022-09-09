@@ -10,34 +10,15 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.findNavController
 import androidx.navigation.navOptions
 import androidx.viewbinding.ViewBinding
-import kotlinx.coroutines.*
-import kotlin.coroutines.CoroutineContext
 
-typealias MyFragment = BaseFragment<*, *>
-typealias MyActivity = BaseActivity<*, *>
+typealias MyFragment = BaseFragment<*>
+typealias MyActivity = BaseActivity<*>
 
-open class CoroutineLauncher : CoroutineScope {
-
-    open val dispatcher: CoroutineDispatcher = Dispatchers.Main
-    private val supervisorJob = SupervisorJob()
-    override val coroutineContext: CoroutineContext
-        get() = dispatcher + supervisorJob
-
-    fun launch(action: suspend CoroutineScope.() -> Unit) = launch(block = action)
-
-    fun cancelCoroutines() {
-        supervisorJob.cancelChildren()
-        supervisorJob.cancel()
-    }
-}
-
-abstract class BaseFragment<V : BaseViewModel, B : ViewBinding> : Fragment() {
+abstract class BaseFragment<B : ViewBinding> : Fragment() {
 
     val fragmentScope: CoroutineLauncher by lazy {
         return@lazy CoroutineLauncher()
     }
-
-    var myTag: String = this::class.java.simpleName
 
     val permissionsResult =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
@@ -48,8 +29,6 @@ abstract class BaseFragment<V : BaseViewModel, B : ViewBinding> : Fragment() {
             }
         }
 
-    abstract val viewModel: V
-
     lateinit var binding: B
 
     private var view: ViewBinding? = null
@@ -59,13 +38,10 @@ abstract class BaseFragment<V : BaseViewModel, B : ViewBinding> : Fragment() {
     var shouldReloadView: Boolean = false
 
     val mActivity: MyActivity?
-        get() = this.activity as? BaseActivity<*, *>
+        get() = this.activity as? MyActivity
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel.isShowProgress.observe(this) { isShow ->
-            mActivity?.viewModel?.isShowProgress?.postValue(isShow)
-        }
     }
 
     override fun onResume() {
@@ -158,6 +134,16 @@ abstract class BaseFragment<V : BaseViewModel, B : ViewBinding> : Fragment() {
         binding.root.findNavController().apply {
             if (destinationId == null) popBackStack()
             else popBackStack(destinationId, inclusive)
+        }
+    }
+}
+
+abstract class BaseVMFragment<V : BaseViewModel, B : ViewBinding> : BaseFragment<B>() {
+    abstract val viewModel: V
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        viewModel.isShowProgress.observe(this) { isShow ->
+            (mActivity as? BaseVMActivity<*, *>)?.viewModel?.isShowProgress?.postValue(isShow)
         }
     }
 }
