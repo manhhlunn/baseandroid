@@ -1,16 +1,36 @@
-package com.example.gurume_go_android.data.network
+package com.example.baseandroid.data.network
 
-import com.example.baseandroid.data.network.APIPath
-import com.example.baseandroid.data.network.APIRequest
-import com.example.baseandroid.data.network.ApiRouter
-import com.example.baseandroid.data.request.BaseRequest
 import com.example.baseandroid.data.response.BaseResponse
+import com.google.gson.annotations.SerializedName
+import kotlinx.coroutines.flow.Flow
+import java.io.Serializable
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
 
+data class Response<T>(
+    @SerializedName("message")
+    var message: String?,
+
+    @SerializedName("status_code")
+    var status_code: Int?,
+
+    @SerializedName("data")
+    var data: T?
+)
+
+data class CommonData(
+
+    @SerializedName("areas") var areas: ArrayList<Any>? = arrayListOf(),
+    @SerializedName("free_characters") var freeCharacters: ArrayList<Any> = arrayListOf()
+
+) : Serializable
+
 //Request
-suspend inline fun APIRequest.getShopInfo(id: Int, request: BaseRequest): Result<BaseResponse> =
-    request(ApiRouter(APIPath.shopInfo(id), parameters = toMap(request).filterNotNullValues().toHashMap()))
+fun APIRequest.getShopInfo(id: Int): Flow<BaseResponse> = request(ApiRouter(APIPath.shopInfo(id)))
+//    request(ApiRouter(APIPath.shopInfo(id), parameters = toMap(request).filterNotNullValues().toHashMap()))
+
+fun APIRequest.getCommon(): Flow<Response<CommonData>> =
+    request(ApiRouter(APIPath.common()))
 
 //extension
 fun <K, V> Map<K, V?>.filterNotNullValues(): Map<K, V> =

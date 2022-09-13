@@ -1,4 +1,4 @@
-package com.example.gurume_go_android.data.network
+package com.example.baseandroid.data.network
 
 import okhttp3.ResponseBody
 import retrofit2.http.*

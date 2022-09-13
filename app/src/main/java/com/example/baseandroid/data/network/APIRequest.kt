@@ -1,18 +1,18 @@
 package com.example.baseandroid.data.network
 
 import com.example.baseandroid.BuildConfig
-import com.example.baseandroid.data.network.APIRequest.Companion.BASE_URL
-import com.example.gurume_go_android.data.network.ApiService
-import com.example.gurume_go_android.data.network.Headers
-import com.example.gurume_go_android.data.network.Parameters
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import okhttp3.ResponseBody
 import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 object APIPath {
     fun shopInfo(id: Int): String = "shop/${id}"
+    fun common(): String = "common"
 }
 
 enum class HTTPError(val code: Int) {
@@ -29,22 +29,18 @@ class APIRequest @Inject constructor(
         const val BASE_URL = BuildConfig.API_ENDPOINT
     }
 
-    suspend inline fun <reified T> request(
+    inline fun <reified T> request(
         router: ApiRouter
-    ): Result<T> {
-        return try {
-            val body = when (router.method) {
-                HTTPMethod.GET -> service.get(router.url(), router.headers, router.parameters)
-                HTTPMethod.POST -> service.post(router.url(), router.headers, router.parameters)
-                HTTPMethod.PUT -> service.put(router.url(), router.headers, router.parameters)
-                HTTPMethod.DELETE -> service.delete(router.url(), router.headers, router.parameters)
-            }
-            return Result.success(gson.fromJson(body.string()))
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Flow<T> = flow { emit(gson.fromJson(getMethodCall(router).string())) }
+
+    suspend fun getMethodCall(router: ApiRouter): ResponseBody = when (router.method) {
+        HTTPMethod.GET -> service.get(router.url(), router.headers, router.parameters)
+        HTTPMethod.POST -> service.post(router.url(), router.headers, router.parameters)
+        HTTPMethod.PUT -> service.put(router.url(), router.headers, router.parameters)
+        HTTPMethod.DELETE -> service.delete(router.url(), router.headers, router.parameters)
     }
 }
+
 
 //suspend fun Result<*>.onRetry(complete: () -> Unit) {
 //    onFailure {
@@ -72,7 +68,7 @@ data class ApiRouter(
 
 val JsonFormatter = hashMapOf("accept" to "application/json", "Content-Type" to "application/json")
 
-fun ApiRouter.url(): String = BASE_URL + path
+fun ApiRouter.url(): String = APIRequest.BASE_URL + path
 
 enum class HTTPMethod {
     GET, POST, PUT, DELETE

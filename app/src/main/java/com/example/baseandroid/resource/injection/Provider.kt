@@ -5,7 +5,7 @@ import androidx.room.Room
 import com.example.baseandroid.BuildConfig
 import com.example.baseandroid.data.local.AppDatabase
 import com.example.baseandroid.data.local.search.SearchHistoryDao
-import com.example.gurume_go_android.data.network.ApiService
+import com.example.baseandroid.data.network.ApiService
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.Module
@@ -16,18 +16,22 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import tech.thdev.network.flowcalladapterfactory.FlowCallAdapterFactory
 
 @Module
 @InstallIn(SingletonComponent::class)
 object Provider {
 
     @Provides
-    fun provideRetrofit(@AuthInterceptorClient okHttpClient: OkHttpClient,
-                        gsonConverterFactory: GsonConverterFactory): ApiService {
+    fun provideRetrofit(
+        @AuthInterceptorClient okHttpClient: OkHttpClient,
+        gsonConverterFactory: GsonConverterFactory
+    ): ApiService {
         return Retrofit.Builder()
             .baseUrl(BuildConfig.API_ENDPOINT)
             .client(okHttpClient)
             .addConverterFactory(gsonConverterFactory)
+            .addCallAdapterFactory(FlowCallAdapterFactory())
             .build()
             .create(ApiService::class.java)
     }
