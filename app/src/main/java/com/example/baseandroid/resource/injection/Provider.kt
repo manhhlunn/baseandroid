@@ -16,7 +16,6 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import tech.thdev.network.flowcalladapterfactory.FlowCallAdapterFactory
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -31,7 +30,6 @@ object Provider {
             .baseUrl(BuildConfig.API_ENDPOINT)
             .client(okHttpClient)
             .addConverterFactory(gsonConverterFactory)
-            .addCallAdapterFactory(FlowCallAdapterFactory())
             .build()
             .create(ApiService::class.java)
     }
