@@ -79,8 +79,8 @@ abstract class BaseActivity<B : ViewBinding> : AppCompatActivity() {
                 args,
                 navOptions { // Use the Kotlin DSL for building NavOptions
                     anim {
-//                    enter = R.anim.fade_in
-//                    exit = R.anim.fade_out
+                    enter = R.anim.fade_in
+                    exit = R.anim.fade_out
                     }
                     popUpTo(it.popUpToId) {
                         inclusive = it.isPopUpToInclusive()
