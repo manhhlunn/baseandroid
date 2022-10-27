@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.viewModels
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.findNavController
+import com.example.baseandroid.R
 import com.example.baseandroid.application.base.BaseVMActivity
 import com.example.baseandroid.application.base.BaseViewModel
 import com.example.baseandroid.data.network.APIRequest
@@ -30,29 +32,32 @@ class MainActivity : BaseVMActivity<MainViewModel, ActivityMainTabbarBinding>() 
     override fun makeViewBinding() {
         super.makeViewBinding()
         binding = ActivityMainTabbarBinding.inflate(layoutInflater)
+        navContainer = binding.navHostFragment.findNavController()
         viewModel.load()
     }
+
+    override var rootDes: Int? = R.id.emptyFragment
 }
 
 @HiltViewModel
 class MainViewModel @Inject constructor(val apiRequest: APIRequest) :
     BaseViewModel() {
 
-        fun load() {
-            viewModelScope.launch {
-                apiRequest.getCommon()
-                    .catch { error ->
-                        Log.d("test", error.message.toString())
-                    }
-                    .collect {
-                        Log.d("test",it.toString())
-                    }
+    fun load() {
+        viewModelScope.launch {
+            apiRequest.getCommon()
+                .catch { error ->
+                    Log.d("test", error.message.toString())
+                }
+                .collect {
+                    Log.d("test", it.toString())
+                }
 //                    .collectLatest {
 //                        Log.d("daovu",it.toString())
 //                    }
-            }
-
         }
+
+    }
 }
 
 

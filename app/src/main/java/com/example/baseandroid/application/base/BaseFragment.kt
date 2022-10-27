@@ -93,48 +93,19 @@ abstract class BaseFragment<B : ViewBinding> : Fragment() {
     }
 
     fun pushTo(@IdRes resId: Int, args: Bundle? = null) {
-        binding.root.findNavController().currentDestination?.getAction(resId)?.navOptions?.let {
-            binding.root.findNavController().navigate(
-                resId,
-                args,
-                navOptions { // Use the Kotlin DSL for building NavOptions
-//                    anim {
-//                        enter = R.anim.slide_in
-//                        exit = R.anim.fade_out
-//                        popEnter = R.anim.fade_in
-//                        popExit = R.anim.slide_out
-//                    }
-                    popUpTo(it.popUpToId) {
-                        inclusive = it.isPopUpToInclusive()
-                    }
-                }
-            )
-        }
+        mActivity?.pushTo(resId, args)
     }
 
     fun pushFadeTo(@IdRes resId: Int, args: Bundle? = null) {
-        binding.root.findNavController().currentDestination?.getAction(resId)?.navOptions?.let {
-            binding.root.findNavController().navigate(
-                resId,
-                args,
-                navOptions { // Use the Kotlin DSL for building NavOptions
-                    anim {
-//                    enter = R.anim.fade_in
-//                    exit = R.anim.fade_out
-                    }
-                    popUpTo(it.popUpToId) {
-                        inclusive = it.isPopUpToInclusive()
-                    }
-                }
-            )
-        }
+        mActivity?.pushFadeTo(resId, args)
     }
 
     fun popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
-        binding.root.findNavController().apply {
-            if (destinationId == null) popBackStack()
-            else popBackStack(destinationId, inclusive)
-        }
+        mActivity?.popTo(destinationId, inclusive)
+    }
+
+    fun popToRoot() {
+        mActivity?.popToRoot()
     }
 }
 

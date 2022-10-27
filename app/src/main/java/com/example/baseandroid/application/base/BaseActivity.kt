@@ -2,8 +2,14 @@ package com.example.baseandroid.application.base
 
 import android.os.Bundle
 import android.view.View
+import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.findNavController
+import androidx.navigation.navOptions
 import androidx.viewbinding.ViewBinding
+import com.example.baseandroid.R
 import com.example.baseandroid.resource.customView.ProgressView
 
 abstract class BaseActivity<B : ViewBinding> : AppCompatActivity() {
@@ -16,6 +22,10 @@ abstract class BaseActivity<B : ViewBinding> : AppCompatActivity() {
     lateinit var binding: B
 
     var tabbar: View? = null
+    var navContainer: NavController? = null
+
+    @IdRes
+    open var rootDes: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,6 +50,55 @@ abstract class BaseActivity<B : ViewBinding> : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         activityScope.cancelCoroutines()
+    }
+
+    fun pushTo(@IdRes resId: Int, args: Bundle? = null) {
+        navContainer?.currentDestination?.getAction(resId)?.navOptions?.let {
+            navContainer?.navigate(
+                resId,
+                args,
+                navOptions { // Use the Kotlin DSL for building NavOptions
+                    anim {
+                        enter = R.anim.enter_from_right
+                        exit = R.anim.exit_to_left
+                        popEnter = R.anim.enter_from_left
+                        popExit = R.anim.exit_to_right
+                    }
+                    popUpTo(it.popUpToId) {
+                        inclusive = it.isPopUpToInclusive()
+                    }
+                }
+            )
+        }
+    }
+
+    fun pushFadeTo(@IdRes resId: Int, args: Bundle? = null) {
+        navContainer?.currentDestination?.getAction(resId)?.navOptions?.let {
+            binding.root.findNavController().navigate(
+                resId,
+                args,
+                navOptions { // Use the Kotlin DSL for building NavOptions
+                    anim {
+//                    enter = R.anim.fade_in
+//                    exit = R.anim.fade_out
+                    }
+                    popUpTo(it.popUpToId) {
+                        inclusive = it.isPopUpToInclusive()
+                    }
+                }
+            )
+        }
+    }
+
+    fun popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
+        navContainer?.apply {
+            if (destinationId == null) popBackStack()
+            else popBackStack(destinationId, inclusive)
+        }
+    }
+
+    fun popToRoot() {
+        rootDes?.let { popTo(it, false) }
     }
 }
 
