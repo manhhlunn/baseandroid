@@ -91,13 +91,8 @@ abstract class BaseFragment<B : ViewBinding> : Fragment() {
         super.onDestroy()
         fragmentScope.cancelCoroutines()
     }
-
-    fun pushTo(@IdRes resId: Int, args: Bundle? = null) {
-        mActivity?.pushTo(resId, args)
-    }
-
-    fun pushFadeTo(@IdRes resId: Int, args: Bundle? = null) {
-        mActivity?.pushFadeTo(resId, args)
+    fun pushTo(@IdRes resId: Int, args: Bundle? = null, anim: PUSH_TYPE = PUSH_TYPE.SLIDE) {
+        mActivity?.pushTo(resId, args, anim)
     }
 
     fun popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
