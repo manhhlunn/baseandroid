@@ -29,9 +29,10 @@ abstract class BaseFragment<B : ViewBinding> : Fragment() {
             }
         }
 
-    lateinit var binding: B
+    val binding: B
+        get() = _binding ?: error("Could not find binding")
 
-    private var view: ViewBinding? = null
+    private var _binding: B? = null
 
     var isVisibleTabbar: Boolean = false
 
@@ -71,13 +72,12 @@ abstract class BaseFragment<B : ViewBinding> : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         if (shouldReloadView) {
-            makeViewBinding(inflater, container, savedInstanceState)
+            _binding = makeBinding(inflater, container, false)
             setupView()
             return binding.root
         }
-        if (view == null) {
-            makeViewBinding(inflater, container, savedInstanceState)
-            view = binding
+        if (_binding == null) {
+            _binding = makeBinding(inflater, container, false)
             setupView()
         }
 
@@ -90,21 +90,11 @@ abstract class BaseFragment<B : ViewBinding> : Fragment() {
     override fun onDestroy() {
         super.onDestroy()
         fragmentScope.cancelCoroutines()
-    }
-    fun pushTo(@IdRes resId: Int, args: Bundle? = null, anim: PUSH_TYPE = PUSH_TYPE.SLIDE) {
-        mActivity?.pushTo(resId, args, anim)
-    }
-
-    fun popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
-        mActivity?.popTo(destinationId, inclusive)
-    }
-
-    fun popToRoot() {
-        mActivity?.popToRoot()
+        _binding = null
     }
 }
 
-abstract class BaseVMFragment<V : BaseViewModel, B : ViewBinding> : BaseFragment<B>() {
+abstract class BaseVMFragment<B : ViewBinding, V : BaseViewModel> : BaseFragment<B>() {
     abstract val viewModel: V
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,4 +102,16 @@ abstract class BaseVMFragment<V : BaseViewModel, B : ViewBinding> : BaseFragment
             (mActivity as? BaseVMActivity<*, *>)?.viewModel?.isShowProgress?.postValue(isShow)
         }
     }
+}
+
+fun MyFragment.pushTo(@IdRes resId: Int, args: Bundle? = null, anim: PushType = PushType.SLIDE) {
+    mActivity?.pushTo(resId, args, anim)
+}
+
+fun MyFragment.popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
+    mActivity?.popTo(destinationId, inclusive)
+}
+
+fun MyFragment.popToRoot() {
+    mActivity?.popToRoot()
 }

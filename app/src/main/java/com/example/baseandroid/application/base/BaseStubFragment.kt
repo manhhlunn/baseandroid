@@ -10,19 +10,11 @@ import androidx.annotation.LayoutRes
 import androidx.viewbinding.ViewBinding
 import com.example.baseandroid.databinding.FragmentStubBinding
 
-abstract class BaseViewStubFragment<V : BaseViewModel, OB : ViewBinding> :
-    BaseVMFragment<V, FragmentStubBinding>() {
+abstract class BaseViewStubFragment<OB : ViewBinding, V : BaseViewModel> :
+    BaseVMFragment<FragmentStubBinding, V>() {
     private var hasInflated = false
 
     lateinit var originBinding: OB
-
-    override fun makeViewBinding(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ) {
-        binding = FragmentStubBinding.inflate(inflater, container, false)
-    }
 
     protected abstract fun onCreateViewAfterViewStubInflated(
         inflatedView: View

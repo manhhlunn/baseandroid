@@ -4,27 +4,35 @@ import android.content.Context
 import android.graphics.Color
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
 import android.widget.LinearLayout
 import com.example.baseandroid.R
 import com.example.baseandroid.databinding.TabbarLayoutBinding
 
+interface TabBar {
+    var didSelectItemAt: ((Int) -> Unit)?
+    var currentSelectedIndex: Int
+    var view: View
+}
+
 class TabbarView(
     context: Context,
     attrs: AttributeSet
-) : LinearLayout(context, attrs) {
+) : LinearLayout(context, attrs), TabBar {
     var binding: TabbarLayoutBinding
 
     private var selectedColor: Int = context.getColor(R.color.white)
     private var defaultColor: Int = context.getColor(R.color.white)
 
-    var currentSelectedIndex: Int = 0
+    override var currentSelectedIndex: Int = 0
         set(value) {
             selectItemAt(value)
             didSelectItemAt?.let { it1 -> it1(value) }
             field = value
         }
+    override var view: View = this
 
-    var didSelectItemAt: ((Int) -> Unit)? = null
+    override var didSelectItemAt: ((Int) -> Unit)? = null
 
     private var listTabItem = mutableListOf<TabbarItemView>()
 

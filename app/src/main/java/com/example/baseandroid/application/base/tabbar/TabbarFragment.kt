@@ -17,15 +17,6 @@ class TabbarFragment @Inject constructor(private val fragments: List<Fragment>) 
     val currentSelectedPosition: Int
         get() = binding.pager.currentItem
 
-    override fun makeViewBinding(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ) {
-        super.makeViewBinding(inflater, container, savedInstanceState)
-        binding = CollectionDemoBinding.inflate(inflater, container, false)
-    }
-
     override fun setupView() {
         super.setupView()
         collectionAdapter = CollectionPagerAdapter(this)
