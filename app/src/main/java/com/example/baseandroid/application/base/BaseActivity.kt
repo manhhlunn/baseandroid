@@ -114,7 +114,7 @@ fun BaseActivity<*>.pushTo(
     }
 }
 
-fun BaseActivity<*>.popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
+fun BaseActivity<*>.popTo(@IdRes destinationId: Int? = null, inclusive: Boolean = false) {
     navContainer?.apply {
         if (destinationId == null) popBackStack()
         else popBackStack(destinationId, inclusive)

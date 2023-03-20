@@ -108,7 +108,7 @@ fun MyFragment.pushTo(@IdRes resId: Int, args: Bundle? = null, anim: PushType = 
     mActivity?.pushTo(resId, args, anim)
 }
 
-fun MyFragment.popTo(@IdRes destinationId: Int?, inclusive: Boolean = false) {
+fun MyFragment.popTo(@IdRes destinationId: Int? = null, inclusive: Boolean = false) {
     mActivity?.popTo(destinationId, inclusive)
 }
 
