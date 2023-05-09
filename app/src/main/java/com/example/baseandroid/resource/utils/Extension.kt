@@ -277,6 +277,16 @@ fun View.asPixels(value: Int): Int {
     return dpAsPixels.toInt()
 }
 
+
+fun getScreenWidth(): Int {
+    return Resources.getSystem().displayMetrics.widthPixels
+}
+
+fun dpFromPx(px: Int): Float {
+    return px / Resources.getSystem().displayMetrics.density
+}
+
+
 sealed class ResultResponse<out R> {
     data class Success<R>(val value: R) : ResultResponse<R>()
     data class Error(val exception: Exception) :

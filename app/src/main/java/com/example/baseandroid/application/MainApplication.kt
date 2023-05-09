@@ -11,11 +11,3 @@ class MainApplication : Application() {
 
 }
 
-fun getScreenWidth(): Int {
-    return Resources.getSystem().displayMetrics.widthPixels
-}
-
-fun dpFromPx(px: Int): Float {
-    return px / Resources.getSystem().displayMetrics.density
-}
-

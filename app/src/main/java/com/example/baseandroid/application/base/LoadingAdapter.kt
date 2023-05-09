@@ -28,6 +28,4 @@ class LoadingAdapter : LoadStateAdapter<BaseViewHolder.LoadingViewHolder>() {
         return BaseViewHolder.LoadingViewHolder(binding)
     }
 
-
-
 }
