@@ -1,23 +1,58 @@
 package com.example.baseandroid.resource.utils
 
 import android.animation.Animator
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Resources
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.Bundle
+import android.os.Parcelable
 import android.util.DisplayMetrics
+import android.util.TypedValue
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewPropertyAnimator
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
 import androidx.annotation.RequiresApi
+import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
+import androidx.swiperefreshlayout.widget.CircularProgressDrawable
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.MultiTransformation
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.bitmap.FitCenter
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.request.target.Target
+import com.example.baseandroid.R
+import com.example.baseandroid.application.base.BaseViewModel
 import com.example.baseandroid.application.base.MyActivity
 import com.example.baseandroid.application.base.MyFragment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
+import java.io.Serializable
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.coroutines.resume
@@ -45,6 +80,10 @@ fun View.stopAnimation() {
 //    this.animation.cancel()
 }
 
+fun View.visibleIf(isVisible: Boolean) {
+    if (isVisible) visible() else gone()
+}
+
 fun View.visible() {
     this.visibility = View.VISIBLE
     this.isEnabled = true
@@ -60,62 +99,6 @@ fun View.gone() {
     this.isEnabled = false
 }
 
-val GOOGLE_MAP_STYLE = """
-    [
-      {
-        "featureType": "administrative.land_parcel",
-        "elementType": "labels",
-        "stylers": [
-          {
-            "visibility": "off"
-          }
-        ]
-      },
-      {
-        "featureType": "poi",
-        "elementType": "labels.text",
-        "stylers": [
-          {
-            "visibility": "off"
-          }
-        ]
-      },
-      {
-        "featureType": "poi.business",
-        "stylers": [
-          {
-            "visibility": "off"
-          }
-        ]
-      },
-      {
-        "featureType": "road",
-        "elementType": "labels.icon",
-        "stylers": [
-          {
-            "visibility": "off"
-          }
-        ]
-      },
-      {
-        "featureType": "road.local",
-        "elementType": "labels",
-        "stylers": [
-          {
-            "visibility": "off"
-          }
-        ]
-      },
-      {
-        "featureType": "transit",
-        "stylers": [
-          {
-            "visibility": "off"
-          }
-        ]
-      }
-    ]
-""".trimIndent()
 
 fun View.animeFade(isShow: Boolean, duration: Long = 0) {
     if (isShow == isVisible) {
@@ -206,7 +189,7 @@ fun View.toggleSelected() {
     isSelected = !isSelected
 }
 
-fun View.togleVisible() {
+fun View.toggleVisible() {
     if (isVisible) {
         gone()
     } else {
@@ -227,7 +210,7 @@ fun Context.convertDpToPixel(dp: Float): Float {
 }
 
 fun Context.isInternetAvailable(): Boolean {
-    var result = false
+    val result: Boolean
     val connectivityManager =
         getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     val networkCapabilities = connectivityManager.activeNetwork ?: return false
@@ -248,15 +231,16 @@ fun LocalDateTime.string(pattern: String = "yyyy-MM-dd HH:mm"): String {
     return this.format(formatter)
 }
 
+
 fun Context.hasPermissions(permissions: Array<String>): Boolean = permissions.all {
     ActivityCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
 }
 
 fun MyFragment.checkPermission(
-    perms: Array<String>
+    perms: Array<String>,
 ) {
     if (requireContext().hasPermissions(perms)) {
-        onPermissionGranted()
+        onPermissionGranted(perms.associateWith { true })
     } else {
         permissionsResult.launch(perms)
     }
@@ -291,4 +275,191 @@ fun View.asPixels(value: Int): Int {
     val scale = resources.displayMetrics.density
     val dpAsPixels = (value * scale + 0.5f)
     return dpAsPixels.toInt()
+}
+
+sealed class ResultResponse<out R> {
+    data class Success<R>(val value: R) : ResultResponse<R>()
+    data class Error(val exception: Exception) :
+        ResultResponse<Nothing>()
+
+    data class DefaultError(val httpException: HttpException) :
+        ResultResponse<Nothing>()
+}
+
+inline fun <T1 : Any, T2 : Any, R : Any> safeLet(p1: T1?, p2: T2?, block: (T1, T2) -> R?): R? {
+    return if (p1 != null && p2 != null) block(p1, p2) else null
+}
+
+inline fun <T1 : Any, T2 : Any, T3 : Any, R : Any> safeLet(
+    p1: T1?,
+    p2: T2?,
+    p3: T3?,
+    block: (T1, T2, T3) -> R?
+): R? {
+    return if (p1 != null && p2 != null && p3 != null) block(p1, p2, p3) else null
+}
+
+inline fun <T1 : Any, T2 : Any, T3 : Any, T4 : Any, R : Any> safeLet(
+    p1: T1?,
+    p2: T2?,
+    p3: T3?,
+    p4: T4?,
+    block: (T1, T2, T3, T4) -> R?,
+): R? {
+    return if (p1 != null && p2 != null && p3 != null && p4 != null) block(p1, p2, p3, p4) else null
+}
+
+inline fun <reified T : Serializable> Bundle.serializable(key: String): T? = when {
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getSerializable(key, T::class.java)
+    else -> @Suppress("DEPRECATION") getSerializable(key) as? T
+}
+
+inline fun <reified T : Serializable> Intent.serializable(key: String): T? = when {
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getSerializableExtra(
+        key,
+        T::class.java
+    )
+
+    else -> @Suppress("DEPRECATION") getSerializableExtra(key) as? T
+}
+
+inline fun <reified T : Parcelable> Intent.parcelable(key: String): T? = when {
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelableExtra(key, T::class.java)
+    else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+}
+
+inline fun <reified T : Parcelable> Bundle.parcelable(key: String): T? = when {
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> getParcelable(key, T::class.java)
+    else -> @Suppress("DEPRECATION") getParcelable(key) as? T
+}
+
+fun <R> BaseViewModel.request(
+    flow: Flow<ResultResponse<R>>,
+    isShowActivityLoading: Boolean = true,
+    error: MutableLiveData<Exception>? = null,
+    success: (R) -> Unit
+) {
+    viewModelScope.launch {
+        if (isShowActivityLoading) showProgress()
+        flow.collect {
+            if (isShowActivityLoading) hideProgress()
+            when (it) {
+                is ResultResponse.Error -> error?.postValue(it.exception)
+                is ResultResponse.DefaultError -> onHandleException(it.httpException)
+                is ResultResponse.Success -> success.invoke(it.value)
+            }
+        }
+    }
+}
+
+fun AppCompatImageView.setImageUrl(
+    url: String?,
+    radius: Int = 0,
+    isCenterCrop: Boolean = true,
+    errDrawable: Int = R.drawable.ic_launcher_background,
+) {
+    url?.let {
+        val multiTransformation: MultiTransformation<Bitmap> = if (radius != 0) {
+            MultiTransformation(
+                if (isCenterCrop) CenterCrop() else FitCenter(),
+                RoundedCorners(radius.dp)
+            )
+        } else {
+            MultiTransformation(
+                if (isCenterCrop) CenterCrop() else FitCenter()
+            )
+        }
+
+        Glide.with(context)
+            .load(url)
+            .apply(RequestOptions.bitmapTransform(multiTransformation))
+            .error(errDrawable)
+            .listener(object : RequestListener<Drawable?> {
+                override fun onLoadFailed(
+                    e: GlideException?,
+                    model: Any?,
+                    target: Target<Drawable?>?,
+                    isFirstResource: Boolean
+                ): Boolean {
+                    return false
+                }
+
+                override fun onResourceReady(
+                    resource: Drawable?,
+                    model: Any?,
+                    target: Target<Drawable?>?,
+                    dataSource: DataSource?,
+                    isFirstResource: Boolean
+                ): Boolean {
+                    return true
+                }
+
+
+            })
+            .placeholder(createPlaceholder(context))
+            .into(this)
+    }
+}
+
+fun createPlaceholder(context: Context) = CircularProgressDrawable(context).also {
+    it.strokeWidth = 5f
+    it.centerRadius = 30f
+    it.start()
+}
+
+fun View.hideKeyboard(context: Context?) {
+    val inputMethodManager =
+        context?.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    inputMethodManager.hideSoftInputFromWindow(this.windowToken, 0)
+}
+
+val Int.dp
+    get() = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        toFloat(),
+        Resources.getSystem().displayMetrics
+    ).toInt()
+
+val Float.dp
+    get() = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_DIP,
+        this,
+        Resources.getSystem().displayMetrics
+    )
+
+val Int.sp
+    get() = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_SP,
+        toFloat(),
+        Resources.getSystem().displayMetrics
+    )
+
+val Float.sp
+    get() = TypedValue.applyDimension(
+        TypedValue.COMPLEX_UNIT_SP,
+        this,
+        Resources.getSystem().displayMetrics
+    )
+
+fun Activity.setupActivityFullScreen(
+    view: View,
+    isHideStatusBar: Boolean = true,
+    isHideNavigationBar: Boolean = true
+) {
+    window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
+    if (isHideNavigationBar) window.navigationBarColor =
+        ContextCompat.getColor(this, android.R.color.transparent)
+    if (isHideStatusBar) window.statusBarColor =
+        ContextCompat.getColor(this, android.R.color.transparent)
+    WindowCompat.setDecorFitsSystemWindows(window, false)
+    ViewCompat.setOnApplyWindowInsetsListener(view) { root, windowInset ->
+        val inset = windowInset.getInsets(WindowInsetsCompat.Type.systemBars())
+        root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            leftMargin = inset.left
+            bottomMargin = if (isHideNavigationBar) 0 else inset.bottom
+            rightMargin = inset.right
+            topMargin = if (isHideStatusBar) 0 else inset.top
+        }
+        WindowInsetsCompat.CONSUMED
+    }
 }

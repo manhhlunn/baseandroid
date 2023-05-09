@@ -1,28 +1,37 @@
 package com.example.baseandroid.data.network
 
 import com.example.baseandroid.BuildConfig
+import com.example.baseandroid.resource.utils.ResultResponse
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import okhttp3.ResponseBody
 import retrofit2.HttpException
+import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 
 object APIPath {
     fun shopInfo(id: Int): String = "shop/${id}"
     fun common(): String = "common"
+    fun refreshToken() = "refreshToken"
 }
 
 enum class HTTPError(val code: Int) {
-    UNAUTHORISE(401)
+    UNAUTHORIZED(401),
+    BAD_REQUEST(400),
+    FORBIDDEN(403),
+    NOT_FOUND(404),
+    PERMISSION_DENIED(406),
+    MAINTENANCE(407),
+    VERSION_UPGRADE(427),
+    SERVER_ERROR(500)
 }
 
 @Singleton
 class APIRequest @Inject constructor(
-    val service: ApiService,
-    val gson: Gson
+    private val service: ApiService,
+    private val serviceWithoutToken: ApiServiceWithoutToken
 ) {
 
     companion object {
@@ -30,31 +39,50 @@ class APIRequest @Inject constructor(
     }
 
     inline fun <reified T> request(
-        router: ApiRouter
-    ): Flow<T> = flow { emit(gson.fromJson(getMethodCall(router).string())) }
+        router: ApiRouter,
+        withToken: Boolean
+    ): Flow<ResultResponse<T>> = flow {
+        try {
+            val response: Response<T> = getService(withToken).getMethodCall(router)
+            val value = response.body()
+            if (response.isSuccessful && value != null) {
+                emit(ResultResponse.Success(value))
+            } else {
+                val ex = HttpException(response)
+                emit(ex.filterError())
+            }
+        } catch (e: HttpException) {
+            emit(e.filterError())
+        } catch (e: Exception) {
+            emit(ResultResponse.Error(e))
+        }
+    }
 
-    suspend fun getMethodCall(router: ApiRouter): ResponseBody = when (router.method) {
-        HTTPMethod.GET -> service.get(router.url(), router.headers, router.parameters)
-        HTTPMethod.POST -> service.post(router.url(), router.headers, router.parameters)
-        HTTPMethod.PUT -> service.put(router.url(), router.headers, router.parameters)
-        HTTPMethod.DELETE -> service.delete(router.url(), router.headers, router.parameters)
+    fun getService(needLogin: Boolean): BaseApiService {
+        return if (needLogin) service else serviceWithoutToken
     }
 }
 
+val DEFAULT_CODE = listOf(
+    HTTPError.NOT_FOUND,
+    HTTPError.MAINTENANCE,
+    HTTPError.SERVER_ERROR,
+    HTTPError.VERSION_UPGRADE,
+    HTTPError.PERMISSION_DENIED
+)
 
-//suspend fun Result<*>.onRetry(complete: () -> Unit) {
-//    onFailure {
-//        if (MainApplication.CONTEXT?.showTwoActionAlert(
-//                "エラーが発生しました",
-//                "もう一度やり直してください",
-//                "リトライ",
-//                "キャンセル"
-//            ) == true
-//        ) {
-//            complete()
-//        }
-//    }
-//}
+fun HttpException.filterError() = if (DEFAULT_CODE.map { it.code }
+        .contains(httpCode())) ResultResponse.DefaultError(this) else ResultResponse.Error(this)
+
+
+suspend fun <T> BaseApiService.getMethodCall(router: ApiRouter): Response<T> =
+    when (router.method) {
+        HTTPMethod.GET -> get(router.url(), router.headers, router.parameters)
+        HTTPMethod.POST -> post(router.url(), router.headers, router.parameters)
+        HTTPMethod.PUT -> put(router.url(), router.headers, router.parameters)
+        HTTPMethod.DELETE -> delete(router.url(), router.headers, router.parameters)
+    }
+
 
 inline fun <reified T> Gson.fromJson(json: String): T =
     fromJson(json, object : TypeToken<T>() {}.type)
@@ -74,4 +102,4 @@ enum class HTTPMethod {
     GET, POST, PUT, DELETE
 }
 
-inline fun Throwable.httpCode(): Int = (this as HttpException).code()
+fun Throwable.httpCode(): Int = (this as HttpException).code()

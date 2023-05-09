@@ -1,7 +1,5 @@
-package com.example.gurume_go_android.data
+package com.example.baseandroid.data.local.search
 
-import com.example.baseandroid.data.local.search.SearchHistoryDao
-import com.example.baseandroid.data.local.search.SearchHistoryEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -26,8 +24,8 @@ class SearchRepositoryImpl @Inject constructor(private val dao: SearchHistoryDao
 
     override suspend fun add(model: SearchModel) = withContext(Dispatchers.IO)
     {
-        val containe = dao.findByKey(model.title)
-        if (containe.isEmpty()) {
+        val contain = dao.findByKey(model.title)
+        if (contain.isEmpty()) {
             dao.insertAll(SearchHistoryEntity(0, model.title))
         }
     }

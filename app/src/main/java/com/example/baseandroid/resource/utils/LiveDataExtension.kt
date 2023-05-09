@@ -1,5 +1,6 @@
 package com.example.baseandroid.resource.utils
 
+import android.util.Log
 import androidx.annotation.MainThread
 import androidx.annotation.Nullable
 import androidx.lifecycle.*
@@ -43,21 +44,15 @@ class SingleLiveEvent<T> : MutableLiveData<T>() {
 
     @MainThread
     override fun observe(owner: LifecycleOwner, observer: Observer<in T>) {
-
-        if (hasActiveObservers()) {
-
-        }
-
-        // Observe the internal MutableLiveData
-        super.observe(owner, Observer<T> { t ->
+        super.observe(owner) { t ->
             if (mPending.compareAndSet(true, false)) {
                 observer.onChanged(t)
             }
-        })
+        }
     }
 
     @MainThread
-    override fun setValue(@Nullable t: T?) {
+    override fun setValue(t: T?) {
         mPending.set(true)
         super.setValue(t)
     }
@@ -69,4 +64,24 @@ class SingleLiveEvent<T> : MutableLiveData<T>() {
     fun call() {
         value = null
     }
+}
+
+fun <T> LiveData<T>.observeNewEvent(owner: LifecycleOwner, observer: Observer<T>) {
+    var isFirstObserver = true
+
+    if (value == null) {
+        isFirstObserver = false
+    }
+
+    observe(owner, object : Observer<T> {
+        override fun onChanged(value: T) {
+            if (isFirstObserver) {
+                isFirstObserver = false
+                return
+            }
+            observer.onChanged(value)
+        }
+    })
+
+
 }

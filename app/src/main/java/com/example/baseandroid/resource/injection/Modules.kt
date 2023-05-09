@@ -1,7 +1,7 @@
 package com.example.baseandroid.resource.injection
 
-import com.example.gurume_go_android.data.SearchRepository
-import com.example.gurume_go_android.data.SearchRepositoryImpl
+import com.example.baseandroid.data.local.search.SearchRepository
+import com.example.baseandroid.data.local.search.SearchRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn

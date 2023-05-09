@@ -1,76 +1,63 @@
 package com.example.baseandroid.application.base
 
+import android.app.Activity
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.MotionEvent
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.LiveData
 import androidx.navigation.AnimBuilder
 import androidx.navigation.NavController
+import androidx.navigation.NavDirections
+import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
-import androidx.navigation.navOptions
 import androidx.viewbinding.ViewBinding
 import com.example.baseandroid.R
-import com.example.baseandroid.application.base.tabbar.TabBar
 import com.example.baseandroid.resource.customView.ProgressView
-import com.example.baseandroid.resource.utils.setComplete
-import java.lang.reflect.ParameterizedType
+import com.example.baseandroid.resource.utils.SingleLiveEvent
 
-abstract class BaseActivity<B : ViewBinding> : AppCompatActivity() {
+
+abstract class BaseActivity<B : ViewBinding>(private val inflate: (LayoutInflater) -> B) :
+    AppCompatActivity() {
+
     val activityScope: CoroutineLauncher by lazy {
         return@lazy CoroutineLauncher()
     }
 
-    var progress: ProgressView? = null
-
-    open val binding: B by lazy { makeBinding(layoutInflater) }
-
-    open var tabBar: TabBar? = null
-    val navContainer: NavController? by lazy {
-        (navHostId?.let {
-            supportFragmentManager.findFragmentById(
-                it
-            )
-        } as? NavHostFragment)?.navController
-    }
-
-    @IdRes
-    open var rootDes: Int? = null
-
-    @IdRes
-    open var navHostId: Int? = null
+    lateinit var binding: B
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        binding = inflate(layoutInflater)
         setContentView(binding.root)
         setupView(savedInstanceState)
+        setupObserve(savedInstanceState)
     }
 
     open fun setupView(savedInstanceState: Bundle?) {}
-
-    fun showTabBar(isShow: Boolean) {
-        tabBar?.view?.animate()
-            ?.setDuration(0)?.translationY(if (isShow) 0f else 200f)
-            ?.alpha(if (isShow) 1f else 0.0f)
-            ?.setComplete {
-                tabBar?.view?.visibility = if (isShow) View.VISIBLE else View.GONE
-            }?.start()
-    }
-
+    open fun setupObserve(savedInstanceState: Bundle?) {}
     override fun onDestroy() {
         super.onDestroy()
         activityScope.cancelCoroutines()
     }
 }
 
-abstract class BaseVMActivity<B : ViewBinding, VM : BaseViewModel> : BaseActivity<B>() {
-    abstract val viewModel: VM
 
-    override fun setupView(savedInstanceState: Bundle?) {
-        super.setupView(savedInstanceState)
+abstract class BaseVMActivity<B : ViewBinding, VM : BaseViewModel>(inflate: (LayoutInflater) -> B) :
+    BaseActivity<B>(inflate) {
+    abstract val viewModel: VM
+    private var progress: ProgressView? = null
+
+    override fun setupObserve(savedInstanceState: Bundle?) {
+        super.setupObserve(savedInstanceState)
         viewModel.isShowProgress.observe(this) { isShow ->
             showProgress(isShow)
+        }
+        viewModel.handleException.observe(this) {
+
         }
     }
 
@@ -90,39 +77,36 @@ abstract class BaseVMActivity<B : ViewBinding, VM : BaseViewModel> : BaseActivit
     }
 }
 
-fun BaseActivity<*>.pushTo(
-    @IdRes resId: Int,
-    args: Bundle? = null,
-    anim: PushType = PushType.SLIDE
-) {
-    navContainer?.currentDestination?.getAction(resId)?.navOptions?.let {
-        navContainer?.navigate(
-            resId,
-            args,
-            navOptions {
-                anim {
-                    enter = anim.anim.enter
-                    exit = anim.anim.exit
-                    popEnter = anim.anim.popEnter
-                    popExit = anim.anim.popExit
-                }
-                popUpTo(it.popUpToId) {
-                    inclusive = it.isPopUpToInclusive()
-                }
+interface ClearFocus {
+    fun onEventClearFocus(
+        activity: Activity,
+        event: MotionEvent,
+        dispatchTouchEvent: Boolean
+    ): Boolean
+}
+
+class ClearFocusImpl : ClearFocus {
+    override fun onEventClearFocus(
+        activity: Activity,
+        event: MotionEvent,
+        dispatchTouchEvent: Boolean
+    ): Boolean {
+        val view = activity.currentFocus
+        if (view is EditText) {
+            val w = activity.currentFocus ?: return dispatchTouchEvent
+            val arr = IntArray(2)
+            w.getLocationOnScreen(arr)
+            val x = event.rawX + w.left - arr[0]
+            val y = event.rawY + w.top - arr[1]
+            if (event.action == MotionEvent.ACTION_UP && (x < w.left || x >= w.right || y < w.top || y > w.bottom)) {
+                val imm =
+                    activity.getSystemService(AppCompatActivity.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(activity.window.currentFocus?.windowToken, 0)
+                view.clearFocus()
             }
-        )
+        }
+        return dispatchTouchEvent
     }
-}
-
-fun BaseActivity<*>.popTo(@IdRes destinationId: Int? = null, inclusive: Boolean = false) {
-    navContainer?.apply {
-        if (destinationId == null) popBackStack()
-        else popBackStack(destinationId, inclusive)
-    }
-}
-
-fun BaseActivity<*>.popToRoot() {
-    rootDes?.let { popTo(it, false) }
 }
 
 enum class PushType(val anim: AnimBuilder) {
@@ -141,34 +125,91 @@ enum class PushType(val anim: AnimBuilder) {
     })
 }
 
-fun <B : ViewBinding> Any.makeBinding(
-    layoutInflater: LayoutInflater,
-    indexGeneric: Int = 0
-): B {
-    val type = javaClass.genericSuperclass
-    val clazz = (type as ParameterizedType).actualTypeArguments[indexGeneric] as Class<B>
-    val method = clazz.getMethod(
-        "inflate",
-        LayoutInflater::class.java
-    )
-
-    return method.invoke(null, layoutInflater) as B
+interface NavigationActivity {
+    fun initNavigation(activity: BaseVMActivity<*, *>, navigationAction: NavigationAction)
 }
 
-fun <B : ViewBinding> Any.makeBinding(
-    layoutInflater: LayoutInflater,
-    viewGroup: ViewGroup?,
-    attachToRoot: Boolean = false,
-    indexGeneric: Int = 0
-): B {
-    val type = javaClass.genericSuperclass
-    val clazz = (type as ParameterizedType).actualTypeArguments[indexGeneric] as Class<B>
-    val method = clazz.getMethod(
-        "inflate",
-        LayoutInflater::class.java,
-        ViewGroup::class.java,
-        Boolean::class.java
-    )
+class NavigationActivityImpl(
+    @IdRes val navHostId: Int
+) : NavigationActivity {
 
-    return method.invoke(null, layoutInflater, viewGroup, attachToRoot) as B
+    override fun initNavigation(
+        activity: BaseVMActivity<*, *>,
+        navigationAction: NavigationAction
+    ) {
+        val navHostFragment =
+            activity.supportFragmentManager.findFragmentById(navHostId) as NavHostFragment
+        val navController = navHostFragment.navController
+
+        navigationAction.navControllerControl.observe(activity) {
+            it(navController)
+        }
+    }
+
 }
+
+class NavigationActionImpl : NavigationAction {
+    override val navControllerControl: LiveData<NavController.() -> Unit> get() = _navControllerControl
+    private val _navControllerControl = SingleLiveEvent<NavController.() -> Unit>()
+
+    private fun getNavOptions(
+        optionalPopUpToId: Int? = null,
+        inclusive: Boolean? = null,
+        pushType: PushType = PushType.NONE
+    ) = NavOptions.Builder().apply {
+        setEnterAnim(pushType.anim.enter)
+        setExitAnim(pushType.anim.exit)
+        setPopEnterAnim(pushType.anim.popEnter)
+        setPopExitAnim(pushType.anim.popExit)
+        optionalPopUpToId?.let {
+            setPopUpTo(optionalPopUpToId, inclusive ?: false)
+        }
+    }.build()
+
+    override fun goBackUpTo(
+        destinyId: Int,
+        inclusive: Boolean
+    ) = _navControllerControl.postValue {
+        navigate(
+            destinyId, null, getNavOptions(
+                optionalPopUpToId = destinyId,
+                inclusive = inclusive
+            )
+        )
+    }
+
+    override fun navigateInDirection(
+        directions: NavDirections,
+        pushType: PushType
+    ) {
+        _navControllerControl.postValue {
+            navigate(directions, getNavOptions(pushType = pushType))
+        }
+    }
+
+    override fun navigateUp() {
+        _navControllerControl.postValue {
+            navigateUp()
+        }
+    }
+
+    override fun popBackStack() {
+        _navControllerControl.postValue {
+            popBackStack()
+        }
+    }
+
+}
+
+interface NavigationAction {
+
+    val navControllerControl: LiveData<NavController.() -> Unit>
+    fun navigateInDirection(directions: NavDirections, pushType: PushType = PushType.FADE)
+    fun goBackUpTo(destinyId: Int, inclusive: Boolean)
+    fun navigateUp()
+    fun popBackStack()
+}
+
+
+
+

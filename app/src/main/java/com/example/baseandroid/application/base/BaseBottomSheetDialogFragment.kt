@@ -7,17 +7,25 @@ import android.view.ViewGroup
 import androidx.viewbinding.ViewBinding
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
-abstract class BaseBottomSheetDialogFragment<B : ViewBinding> : BottomSheetDialogFragment() {
-    lateinit var binding: B
+abstract class BaseBottomSheetDialogFragment<B : ViewBinding>(private val inflate: InflateFM<B>) :
+    BottomSheetDialogFragment() {
+
+    var binding: B by autoCleaned()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        binding = makeBinding(inflater, container, false)
-        setupView()
+        binding = inflate(inflater, container, false)
         return binding.root
     }
 
-    open fun setupView() {}
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupView(savedInstanceState)
+        setupObserve(savedInstanceState)
+    }
+
+    open fun setupView(savedInstanceState: Bundle?) {}
+    open fun setupObserve(savedInstanceState: Bundle?) {}
 }

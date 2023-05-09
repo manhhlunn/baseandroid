@@ -1,13 +1,13 @@
 package com.example.baseandroid.data.network
 
-import com.example.baseandroid.data.response.BaseResponse
+import com.example.baseandroid.resource.utils.ResultResponse
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.flow.Flow
 import java.io.Serializable
 import kotlin.reflect.KClass
 import kotlin.reflect.full.memberProperties
 
-data class Response<T>(
+data class ApiResponse<T>(
     @SerializedName("message")
     var message: String?,
 
@@ -26,17 +26,20 @@ data class CommonData(
 ) : Serializable
 
 //Request
-fun APIRequest.getShopInfo(id: Int): Flow<BaseResponse> = request(ApiRouter(APIPath.shopInfo(id)))
-//    request(ApiRouter(APIPath.shopInfo(id), parameters = toMap(request).filterNotNullValues().toHashMap()))
+fun APIRequest.getShopInfo(id: Int): Flow<ResultResponse<ApiResponse<String>>> = request(ApiRouter(APIPath.shopInfo(id), parameters = String.toRequest()),true)
 
-fun APIRequest.getCommon(): Flow<Response<CommonData>> =
-    request(ApiRouter(APIPath.common()))
+fun APIRequest.getList(page: Int): Flow<ResultResponse<ApiResponse<List<String>>>> = request(ApiRouter(APIPath.shopInfo(page), parameters = String.toRequest()),true)
+
 
 //extension
 fun <K, V> Map<K, V?>.filterNotNullValues(): Map<K, V> =
     mapNotNull { (key, value) -> value?.let { key to it } }.toMap()
 
 fun <K, V> Map<K, V>.toHashMap(): HashMap<K, V> = HashMap(this)
+
+fun <T : Any> T.toRequest(): Parameters {
+    return toMap(this).filterNotNullValues().toHashMap()
+}
 
 fun <T : Any> toMap(obj: T): Map<String, Any?> {
     return (obj::class as KClass<T>).memberProperties.associate { prop ->
@@ -49,3 +52,4 @@ fun <T : Any> toMap(obj: T): Map<String, Any?> {
         }
     }
 }
+

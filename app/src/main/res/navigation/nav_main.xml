@@ -4,6 +4,10 @@
     android:id="@+id/nav_main"
     app:startDestination="@id/emptyFragment">
 
+    <action
+        android:id="@+id/action_to_emptyFragment2"
+        app:destination="@id/emptyFragment2" />
+
     <fragment
         android:id="@+id/emptyFragment"
         android:name="com.example.baseandroid.view.empty.EmptyFragment"

@@ -22,7 +22,6 @@
         <activity
             android:name="com.example.baseandroid.view.main_activity.MainActivity"
             android:exported="true"
-            android:noHistory="true"
             android:windowSoftInputMode="stateAlwaysHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

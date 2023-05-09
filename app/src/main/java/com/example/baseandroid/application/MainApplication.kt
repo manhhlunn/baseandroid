@@ -8,15 +8,7 @@ import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class MainApplication : Application() {
-    companion object {
-        @SuppressLint("StaticFieldLeak")
-        lateinit var CONTEXT: Context
-    }
 
-    override fun onCreate() {
-        super.onCreate()
-        CONTEXT = this
-    }
 }
 
 fun getScreenWidth(): Int {

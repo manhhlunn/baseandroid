@@ -5,16 +5,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.IdRes
 import androidx.fragment.app.Fragment
-import androidx.navigation.findNavController
-import androidx.navigation.navOptions
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.Observer
+import androidx.navigation.fragment.findNavController
 import androidx.viewbinding.ViewBinding
+import kotlin.properties.ReadWriteProperty
+import kotlin.reflect.KProperty
 
 typealias MyFragment = BaseFragment<*>
 typealias MyActivity = BaseActivity<*>
+typealias InflateFM<T> = (LayoutInflater, ViewGroup?, Boolean) -> T
 
-abstract class BaseFragment<B : ViewBinding> : Fragment() {
+abstract class BaseFragment<B : ViewBinding>(private val inflate: InflateFM<B>) : Fragment() {
 
     val fragmentScope: CoroutineLauncher by lazy {
         return@lazy CoroutineLauncher()
@@ -23,95 +28,129 @@ abstract class BaseFragment<B : ViewBinding> : Fragment() {
     val permissionsResult =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             if (permissions.entries.all { it.value }) {
-                onPermissionGranted()
+                onPermissionGranted(permissions)
             } else {
-                onPermissionDenied()
+                onPermissionDenied(permissions)
             }
         }
 
-    val binding: B
-        get() = _binding ?: error("Could not find binding")
 
-    private var _binding: B? = null
-
-    var isVisibleTabbar: Boolean = false
-
-    var shouldReloadView: Boolean = false
-
-    val mActivity: MyActivity?
-        get() = this.activity as? MyActivity
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
-
-    override fun onResume() {
-        super.onResume()
-//        if ((parentFragment == null || parentFragment is TabbarFragment ) && isVisibleTabbar) {
-//        if (isVisibleTabbar) {
-//            binding.root.setPaddingAsDP(bottom = 68)
-//        } else {
-//            binding.root.setPaddingAsDP()
-//        }
-//
-//        mActivity?.showTabbar(isVisibleTabbar)
-    }
-
-    open fun setupView() {}
-
-    open fun makeViewBinding(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ) {
-    }
+    var binding: B by autoCleaned()
+    open fun setupView(savedInstanceState: Bundle?) {}
+    open fun setupObserve(savedInstanceState: Bundle?) {}
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        if (shouldReloadView) {
-            _binding = makeBinding(inflater, container, false)
-            setupView()
-            return binding.root
-        }
-        if (_binding == null) {
-            _binding = makeBinding(inflater, container, false)
-            setupView()
-        }
-
+        binding = inflate(inflater, container, false)
         return this.binding.root
     }
 
-    open fun onPermissionGranted() {}
-    open fun onPermissionDenied() {}
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupView(savedInstanceState)
+        setupObserve(savedInstanceState)
+    }
+
+    open fun onPermissionGranted(permissions: Map<String, @JvmSuppressWildcards Boolean>) {}
+    open fun onPermissionDenied(permissions: Map<String, @JvmSuppressWildcards Boolean>) {}
 
     override fun onDestroy() {
         super.onDestroy()
         fragmentScope.cancelCoroutines()
-        _binding = null
     }
 }
 
-abstract class BaseVMFragment<B : ViewBinding, V : BaseViewModel> : BaseFragment<B>() {
+abstract class BaseVMFragment<B : ViewBinding, V : BaseViewModel>(inflate: InflateFM<B>) :
+    BaseFragment<B>(inflate) {
     abstract val viewModel: V
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        viewModel.isShowProgress.observe(this) { isShow ->
-            (mActivity as? BaseVMActivity<*, *>)?.viewModel?.isShowProgress?.postValue(isShow)
+    private val activityVM: BaseViewModel? by lazy {
+        (activity as? BaseVMActivity<*, *>)?.viewModel
+    }
+
+    override fun setupView(savedInstanceState: Bundle?) {
+        super.setupView(savedInstanceState)
+        viewModel.isShowProgress.observe(viewLifecycleOwner) { isShow ->
+            activityVM?.apply {
+                if (isShow) showProgress()
+                else hideProgress()
+            }
+        }
+        viewModel.handleException.observe(viewLifecycleOwner) {
+            activityVM?.onHandleException(it)
         }
     }
 }
 
-fun MyFragment.pushTo(@IdRes resId: Int, args: Bundle? = null, anim: PushType = PushType.SLIDE) {
-    mActivity?.pushTo(resId, args, anim)
+interface NavigationFragment {
+    fun initNavigation(fragment: BaseVMFragment<*, *>, navigationAction: NavigationAction)
 }
 
-fun MyFragment.popTo(@IdRes destinationId: Int? = null, inclusive: Boolean = false) {
-    mActivity?.popTo(destinationId, inclusive)
+class NavigationFragmentImpl : NavigationFragment {
+    override fun initNavigation(
+        fragment: BaseVMFragment<*, *>,
+        navigationAction: NavigationAction
+    ) {
+        navigationAction.navControllerControl.observe(fragment.viewLifecycleOwner) { nav ->
+            nav(fragment.findNavController())
+        }
+    }
+
 }
 
-fun MyFragment.popToRoot() {
-    mActivity?.popToRoot()
+class AutoCleanedValue<T>(
+    fragment: Fragment,
+    private val initializer: (() -> T)?
+) : ReadWriteProperty<Fragment, T> {
+
+    private var _value: T? = null
+
+    init {
+        fragment.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            val viewLifecycleOwnerObserver = Observer<LifecycleOwner?> { viewLifecycleOwner ->
+                viewLifecycleOwner?.lifecycle?.addObserver(object : DefaultLifecycleObserver {
+
+                    override fun onDestroy(owner: LifecycleOwner) {
+                        _value = null
+                    }
+                })
+            }
+
+            override fun onCreate(owner: LifecycleOwner) {
+                fragment.viewLifecycleOwnerLiveData.observeForever(viewLifecycleOwnerObserver)
+            }
+
+            override fun onDestroy(owner: LifecycleOwner) {
+                fragment.viewLifecycleOwnerLiveData.removeObserver(viewLifecycleOwnerObserver)
+            }
+        })
+    }
+
+    override fun getValue(thisRef: Fragment, property: KProperty<*>): T {
+        val value = _value
+
+        if (value != null) {
+            return value
+        }
+
+        if (thisRef.viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.INITIALIZED)) {
+            return initializer?.invoke().also { _value = it }
+                ?: throw IllegalStateException("The value has not yet been set or no default initializer provided")
+        } else {
+            throw IllegalStateException("Fragment might have been destroyed or not initialized yet")
+        }
+    }
+
+    override fun setValue(thisRef: Fragment, property: KProperty<*>, value: T) {
+        _value = value
+    }
 }
+
+fun <T : Any> Fragment.autoCleaned(initializer: (() -> T)? = null): AutoCleanedValue<T> {
+    return AutoCleanedValue(this, initializer)
+}
+
+
+
