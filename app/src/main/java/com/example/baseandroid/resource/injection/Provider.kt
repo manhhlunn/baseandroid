@@ -84,8 +84,9 @@ object Provider {
     @Singleton
     fun provideUserDataStorePreferences(
         @ApplicationContext applicationContext: Context,
+        gson: Gson
     ): DataStoreManager {
-        return DataStoreManager(applicationContext)
+        return DataStoreManager(applicationContext, gson)
     }
 
     @Provides

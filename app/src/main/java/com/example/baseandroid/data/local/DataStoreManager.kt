@@ -13,6 +13,10 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.baseandroid.BuildConfig
+import com.example.baseandroid.data.network.fromJson
+import com.example.baseandroid.data.response.BaseResponse
+import com.example.baseandroid.data.response.RefreshTokenResponse
+import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -26,16 +30,42 @@ import kotlin.reflect.KProperty
 private val Context.dataStore by preferencesDataStore(BuildConfig.APPLICATION_ID)
 
 @Singleton
-class DataStoreManager @Inject constructor(@ApplicationContext appContext: Context) {
+class DataStoreManager @Inject constructor(@ApplicationContext appContext: Context, gson: Gson) {
 
-    private val settingsDataStore = appContext.dataStore
+    val dataStore = appContext.dataStore
     var accessToken by myPreferenceDataStore("")
     var refreshToken by myPreferenceDataStore("")
     var example by myPreferenceDataStore(Example.FIRST)
+    var response: BaseResponse? by myPreferenceDataStore(gson)
 
-    fun <T> get(key: Preferences.Key<T>, default: T): T = settingsDataStore.get(key, default)
-    fun <T> set(key: Preferences.Key<T>, value: T) = settingsDataStore.set(key, value)
+    inline fun <reified T> get(name: String, default: T) = runBlocking {
+        when (default) {
+            is String -> dataStore.data.first()[stringPreferencesKey(name)] ?: default
+            is Int -> dataStore.data.first()[intPreferencesKey(name)] ?: default
+            is Boolean -> dataStore.data.first()[booleanPreferencesKey(name)] ?: default
+            is Double -> dataStore.data.first()[doublePreferencesKey(name)] ?: default
+            is Float -> dataStore.data.first()[floatPreferencesKey(name)] ?: default
+            is Long -> dataStore.data.first()[longPreferencesKey(name)] ?: default
+            else -> throw IOException("Not support data type ${T::class.java}")
+        } as? T ?: throw IOException("Not support data type ${T::class.java}")
+    }
 
+    inline fun <reified T> set(
+        name: String,
+        value: T,
+    ) = runBlocking<Unit> {
+        dataStore.edit {
+            when (value) {
+                is String -> it[stringPreferencesKey(name)] = value
+                is Int -> it[intPreferencesKey(name)] = value
+                is Boolean -> it[booleanPreferencesKey(name)] = value
+                is Double -> it[doublePreferencesKey(name)] = value
+                is Float -> it[floatPreferencesKey(name)] = value
+                is Long -> it[longPreferencesKey(name)] = value
+                else -> throw IOException("Not support data type ${T::class.java}")
+            }
+        }
+    }
 }
 
 enum class Example {
@@ -45,109 +75,18 @@ enum class Example {
 }
 
 
-fun <T> DataStore<Preferences>.get(key: Preferences.Key<T>, default: T) = runBlocking {
-    data.first()[key] ?: default
-}
-
-fun <T> DataStore<Preferences>.set(
-    key: Preferences.Key<T>,
-    value: T?,
-) = runBlocking<Unit> {
-    edit {
-        if (value == null) {
-            it.remove(key)
-        } else {
-            it[key] = value
-        }
-    }
-}
-
-fun myPreferenceDataStore(
-    defaultValue: String,
-) = object : ReadWriteProperty<DataStoreManager, String> {
+inline fun <reified T : Any> myPreferenceDataStore(
+    defaultValue: T,
+) = object : ReadWriteProperty<DataStoreManager, T> {
 
     @WorkerThread
-    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): String {
-        return thisRef.get(key = stringPreferencesKey(property.name), default = defaultValue)
+    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): T {
+        return thisRef.get(name = property.name, default = defaultValue)
     }
 
 
-    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: String) {
-        thisRef.set(key = stringPreferencesKey(property.name), value = value)
-    }
-}
-fun myPreferenceDataStore(
-    defaultValue: Int,
-) = object : ReadWriteProperty<DataStoreManager, Int> {
-
-    @WorkerThread
-    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): Int {
-        return thisRef.get(key = intPreferencesKey(property.name), default = defaultValue)
-    }
-
-
-    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: Int) {
-        thisRef.set(key = intPreferencesKey(property.name), value = value)
-    }
-}
-
-fun myPreferenceDataStore(
-    defaultValue: Boolean,
-) = object : ReadWriteProperty<DataStoreManager, Boolean> {
-
-    @WorkerThread
-    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): Boolean {
-        return thisRef.get(key = booleanPreferencesKey(property.name), default = defaultValue)
-    }
-
-
-    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: Boolean) {
-        thisRef.set(key = booleanPreferencesKey(property.name), value = value)
-    }
-}
-
-fun myPreferenceDataStore(
-    defaultValue: Long,
-) = object : ReadWriteProperty<DataStoreManager, Long> {
-
-    @WorkerThread
-    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): Long {
-        return thisRef.get(key = longPreferencesKey(property.name), default = defaultValue)
-    }
-
-
-    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: Long) {
-        thisRef.set(key = longPreferencesKey(property.name), value = value)
-    }
-}
-
-fun myPreferenceDataStore(
-    defaultValue: Double,
-) = object : ReadWriteProperty<DataStoreManager, Double> {
-
-    @WorkerThread
-    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): Double {
-        return thisRef.get(key = doublePreferencesKey(property.name), default = defaultValue)
-    }
-
-
-    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: Double) {
-        thisRef.set(key = doublePreferencesKey(property.name), value = value)
-    }
-}
-
-fun myPreferenceDataStore(
-    defaultValue: Float,
-) = object : ReadWriteProperty<DataStoreManager, Float> {
-
-    @WorkerThread
-    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): Float {
-        return thisRef.get(key = floatPreferencesKey(property.name), default = defaultValue)
-    }
-
-
-    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: Float) {
-        thisRef.set(key = floatPreferencesKey(property.name), value = value)
+    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: T) {
+        thisRef.set(name = property.name, value = value)
     }
 }
 
@@ -158,16 +97,40 @@ inline fun <reified T : Enum<T>> myPreferenceDataStore(
     @WorkerThread
     override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): T {
         val stringEnum = thisRef.get(
-            key = stringPreferencesKey(property.name),
+            name = property.name,
             default = defaultValue.name
         )
         return enumValues<T>().first { it.name == stringEnum }
     }
 
     override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: T) {
-        thisRef.set(key = stringPreferencesKey(property.name), value = value.name)
+        thisRef.set(name = (property.name), value = value.name)
     }
 }
+
+inline fun <reified T> myPreferenceDataStore(
+    gson: Gson
+) = object : ReadWriteProperty<DataStoreManager, T?> {
+
+    @WorkerThread
+    override fun getValue(thisRef: DataStoreManager, property: KProperty<*>): T? {
+        return try {
+            val json = thisRef.get(
+                name = property.name,
+                default = "{}"
+            )
+            return gson.fromJson(json)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: T?) {
+        val json = gson.toJson(value)
+        thisRef.set(name = (property.name), value = json)
+    }
+}
+
 
 
 
