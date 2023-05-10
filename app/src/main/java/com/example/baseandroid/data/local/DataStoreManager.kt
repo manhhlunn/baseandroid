@@ -2,8 +2,6 @@ package com.example.baseandroid.data.local
 
 import android.content.Context
 import androidx.annotation.WorkerThread
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -15,12 +13,10 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.example.baseandroid.BuildConfig
 import com.example.baseandroid.data.network.fromJson
 import com.example.baseandroid.data.response.BaseResponse
-import com.example.baseandroid.data.response.RefreshTokenResponse
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.properties.ReadWriteProperty
@@ -46,8 +42,8 @@ class DataStoreManager @Inject constructor(@ApplicationContext appContext: Conte
             is Double -> dataStore.data.first()[doublePreferencesKey(name)] ?: default
             is Float -> dataStore.data.first()[floatPreferencesKey(name)] ?: default
             is Long -> dataStore.data.first()[longPreferencesKey(name)] ?: default
-            else -> throw IOException("Not support data type ${T::class.java}")
-        } as? T ?: throw IOException("Not support data type ${T::class.java}")
+            else -> throw IllegalArgumentException("Not support data type ${T::class.java}")
+        } as? T ?: throw IllegalArgumentException("Not support data type ${T::class.java}")
     }
 
     inline fun <reified T> set(
@@ -62,11 +58,12 @@ class DataStoreManager @Inject constructor(@ApplicationContext appContext: Conte
                 is Double -> it[doublePreferencesKey(name)] = value
                 is Float -> it[floatPreferencesKey(name)] = value
                 is Long -> it[longPreferencesKey(name)] = value
-                else -> throw IOException("Not support data type ${T::class.java}")
+                else -> throw IllegalArgumentException("Not support data type ${T::class.java}")
             }
         }
     }
 }
+
 
 enum class Example {
     FIRST,
@@ -126,8 +123,12 @@ inline fun <reified T> myPreferenceDataStore(
     }
 
     override fun setValue(thisRef: DataStoreManager, property: KProperty<*>, value: T?) {
-        val json = gson.toJson(value)
-        thisRef.set(name = (property.name), value = json)
+        try {
+            val json = gson.toJson(value)
+            thisRef.set(name = (property.name), value = json)
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Not support data type ${T::class.java}")
+        }
     }
 }
 
