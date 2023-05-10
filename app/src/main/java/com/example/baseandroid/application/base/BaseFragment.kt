@@ -21,11 +21,7 @@ typealias InflateFM<T> = (LayoutInflater, ViewGroup?, Boolean) -> T
 
 abstract class BaseFragment<B : ViewBinding>(private val inflate: InflateFM<B>) : Fragment() {
 
-    val fragmentScope: CoroutineLauncher by lazy {
-        return@lazy CoroutineLauncher()
-    }
-
-    val permissionsResult =
+        val permissionsResult =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             if (permissions.entries.all { it.value }) {
                 onPermissionGranted(permissions)
@@ -57,10 +53,7 @@ abstract class BaseFragment<B : ViewBinding>(private val inflate: InflateFM<B>) 
     open fun onPermissionGranted(permissions: Map<String, @JvmSuppressWildcards Boolean>) {}
     open fun onPermissionDenied(permissions: Map<String, @JvmSuppressWildcards Boolean>) {}
 
-    override fun onDestroy() {
-        super.onDestroy()
-        fragmentScope.cancelCoroutines()
-    }
+
 }
 
 abstract class BaseVMFragment<B : ViewBinding, V : BaseViewModel>(inflate: InflateFM<B>) :

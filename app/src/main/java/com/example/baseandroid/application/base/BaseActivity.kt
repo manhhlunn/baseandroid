@@ -23,10 +23,6 @@ import com.example.baseandroid.resource.utils.SingleLiveEvent
 abstract class BaseActivity<B : ViewBinding>(private val inflate: (LayoutInflater) -> B) :
     AppCompatActivity() {
 
-    val activityScope: CoroutineLauncher by lazy {
-        return@lazy CoroutineLauncher()
-    }
-
     lateinit var binding: B
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,11 +35,7 @@ abstract class BaseActivity<B : ViewBinding>(private val inflate: (LayoutInflate
 
     open fun setupView(savedInstanceState: Bundle?) {}
     open fun setupObserve(savedInstanceState: Bundle?) {}
-    override fun onDestroy() {
-        super.onDestroy()
-        activityScope.cancelCoroutines()
     }
-}
 
 
 abstract class BaseVMActivity<B : ViewBinding, VM : BaseViewModel>(inflate: (LayoutInflater) -> B) :

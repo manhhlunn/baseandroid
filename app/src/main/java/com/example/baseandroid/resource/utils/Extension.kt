@@ -31,6 +31,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.swiperefreshlayout.widget.CircularProgressDrawable
 import com.bumptech.glide.Glide
@@ -61,7 +62,7 @@ import kotlin.coroutines.suspendCoroutine
 fun MyFragment.delay(
     timeMillis: Long, execute: () -> Unit
 ) {
-    fragmentScope.launch {
+    lifecycleScope.launch {
         kotlinx.coroutines.delay(timeMillis)
         execute()
     }
@@ -70,7 +71,7 @@ fun MyFragment.delay(
 fun MyActivity.delay(
     timeMillis: Long, execute: () -> Unit
 ) {
-    activityScope.launch {
+    lifecycleScope.launch {
         kotlinx.coroutines.delay(timeMillis)
         execute()
     }
