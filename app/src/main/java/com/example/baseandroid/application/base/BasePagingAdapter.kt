@@ -23,8 +23,5 @@ abstract class BasePagingAdapter<A : Any, B : ViewBinding>(
         position: Int
     )
 
-
-
-
 }
 

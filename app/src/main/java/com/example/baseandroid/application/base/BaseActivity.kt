@@ -1,29 +1,33 @@
 package com.example.baseandroid.application.base
 
 import android.app.Activity
+import android.content.Context
 import android.os.Bundle
+import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.LiveData
+import androidx.fragment.app.Fragment
 import androidx.navigation.AnimBuilder
 import androidx.navigation.NavController
 import androidx.navigation.NavDirections
 import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.fragment.findNavController
 import androidx.viewbinding.ViewBinding
 import com.example.baseandroid.R
 import com.example.baseandroid.resource.customView.ProgressView
-import com.example.baseandroid.resource.utils.SingleLiveEvent
 
 
 abstract class BaseActivity<B : ViewBinding>(private val inflate: (LayoutInflater) -> B) :
     AppCompatActivity() {
 
     lateinit var binding: B
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,9 +37,10 @@ abstract class BaseActivity<B : ViewBinding>(private val inflate: (LayoutInflate
         setupObserve(savedInstanceState)
     }
 
+
     open fun setupView(savedInstanceState: Bundle?) {}
     open fun setupObserve(savedInstanceState: Bundle?) {}
-    }
+}
 
 
 abstract class BaseVMActivity<B : ViewBinding, VM : BaseViewModel>(inflate: (LayoutInflater) -> B) :
@@ -117,32 +122,20 @@ enum class PushType(val anim: AnimBuilder) {
     })
 }
 
-interface NavigationActivity {
-    fun initNavigation(activity: BaseVMActivity<*, *>, navigationAction: NavigationAction)
-}
+class NavigationActionImpl : NavigationAction {
+    override val navController: NavController
+        get() = _navController
+    private lateinit var _navController: NavController
 
-class NavigationActivityImpl(
-    @IdRes val navHostId: Int
-) : NavigationActivity {
-
-    override fun initNavigation(
-        activity: BaseVMActivity<*, *>,
-        navigationAction: NavigationAction
-    ) {
+    override fun initNavigation(activity: AppCompatActivity, @IdRes navId: Int) {
         val navHostFragment =
-            activity.supportFragmentManager.findFragmentById(navHostId) as NavHostFragment
-        val navController = navHostFragment.navController
-
-        navigationAction.navControllerControl.observe(activity) {
-            it(navController)
-        }
+            activity.supportFragmentManager.findFragmentById(navId) as NavHostFragment
+        _navController = navHostFragment.navController
     }
 
-}
-
-class NavigationActionImpl : NavigationAction {
-    override val navControllerControl: LiveData<NavController.() -> Unit> get() = _navControllerControl
-    private val _navControllerControl = SingleLiveEvent<NavController.() -> Unit>()
+    override fun initNavigation(fragment: Fragment) {
+        _navController = fragment.findNavController()
+    }
 
     private fun getNavOptions(
         optionalPopUpToId: Int? = null,
@@ -161,7 +154,7 @@ class NavigationActionImpl : NavigationAction {
     override fun goBackUpTo(
         destinyId: Int,
         inclusive: Boolean
-    ) = _navControllerControl.postValue {
+    ) = navController.run {
         navigate(
             destinyId, null, getNavOptions(
                 optionalPopUpToId = destinyId,
@@ -174,32 +167,33 @@ class NavigationActionImpl : NavigationAction {
         directions: NavDirections,
         pushType: PushType
     ) {
-        _navControllerControl.postValue {
+        navController.run {
             navigate(directions, getNavOptions(pushType = pushType))
         }
     }
 
     override fun navigateUp() {
-        _navControllerControl.postValue {
+        navController.run {
             navigateUp()
         }
     }
 
     override fun popBackStack() {
-        _navControllerControl.postValue {
+        navController.run {
             popBackStack()
         }
     }
-
 }
 
 interface NavigationAction {
 
-    val navControllerControl: LiveData<NavController.() -> Unit>
+    val navController: NavController
     fun navigateInDirection(directions: NavDirections, pushType: PushType = PushType.FADE)
     fun goBackUpTo(destinyId: Int, inclusive: Boolean)
     fun navigateUp()
     fun popBackStack()
+    fun initNavigation(activity: AppCompatActivity, @IdRes navId: Int)
+    fun initNavigation(fragment: Fragment)
 }
 
 

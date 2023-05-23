@@ -6,13 +6,17 @@ import android.view.ViewGroup
 import com.example.baseandroid.application.base.BaseDialogFragment
 import com.example.baseandroid.databinding.CustomDialogFragmentBinding
 import javax.inject.Inject
+import kotlin.math.abs
 
 class ProgressView @Inject constructor() :
     BaseDialogFragment<CustomDialogFragmentBinding>(CustomDialogFragmentBinding::inflate) {
     override fun setupView(savedInstanceState: Bundle?) {
         super.setupView(savedInstanceState)
-        dialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
-        dialog?.setCancelable(false)
-        dialog?.setCanceledOnTouchOutside(false)
+        dialog?.apply {
+            window?.setBackgroundDrawableResource(android.R.color.transparent)
+            setCancelable(false)
+            setCanceledOnTouchOutside(false)
+        }
     }
 }
+

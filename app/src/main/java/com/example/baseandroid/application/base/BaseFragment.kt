@@ -10,7 +10,6 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.Observer
-import androidx.navigation.fragment.findNavController
 import androidx.viewbinding.ViewBinding
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
@@ -77,22 +76,6 @@ abstract class BaseVMFragment<B : ViewBinding, V : BaseViewModel>(inflate: Infla
     }
 }
 
-interface NavigationFragment {
-    fun initNavigation(fragment: BaseVMFragment<*, *>, navigationAction: NavigationAction)
-}
-
-class NavigationFragmentImpl : NavigationFragment {
-    override fun initNavigation(
-        fragment: BaseVMFragment<*, *>,
-        navigationAction: NavigationAction
-    ) {
-        navigationAction.navControllerControl.observe(fragment.viewLifecycleOwner) { nav ->
-            nav(fragment.findNavController())
-        }
-    }
-
-}
-
 class AutoCleanedValue<T>(
     fragment: Fragment,
     private val initializer: (() -> T)?
@@ -120,6 +103,9 @@ class AutoCleanedValue<T>(
             }
         })
     }
+
+
+
 
     override fun getValue(thisRef: Fragment, property: KProperty<*>): T {
         val value = _value

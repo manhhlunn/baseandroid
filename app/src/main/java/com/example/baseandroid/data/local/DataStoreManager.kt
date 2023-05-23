@@ -2,6 +2,7 @@ package com.example.baseandroid.data.local
 
 import android.content.Context
 import androidx.annotation.WorkerThread
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -15,7 +16,9 @@ import com.example.baseandroid.data.network.fromJson
 import com.example.baseandroid.data.response.BaseResponse
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,10 +32,12 @@ private val Context.dataStore by preferencesDataStore(BuildConfig.APPLICATION_ID
 class DataStoreManager @Inject constructor(@ApplicationContext appContext: Context, gson: Gson) {
 
     val dataStore = appContext.dataStore
-    var accessToken by myPreferenceDataStore("")
-    var refreshToken by myPreferenceDataStore("")
-    var example by myPreferenceDataStore(Example.FIRST)
-    var response: BaseResponse? by myPreferenceDataStore(gson)
+    var accessToken by myDataStoreValue("")
+    var refreshToken by myDataStoreValue("")
+    var example by myDataStoreValue(Example.FIRST)
+    var response: BaseResponse? by myDataStoreValue(gson)
+
+    var key = intPreferencesKey("")
 
     inline fun <reified T> get(name: String, default: T) = runBlocking {
         when (default) {
@@ -43,7 +48,7 @@ class DataStoreManager @Inject constructor(@ApplicationContext appContext: Conte
             is Float -> dataStore.data.first()[floatPreferencesKey(name)] ?: default
             is Long -> dataStore.data.first()[longPreferencesKey(name)] ?: default
             else -> throw IllegalArgumentException("Not support data type ${T::class.java}")
-        } as? T ?: throw IllegalArgumentException("Not support data type ${T::class.java}")
+        } as T
     }
 
     inline fun <reified T> set(
@@ -62,7 +67,20 @@ class DataStoreManager @Inject constructor(@ApplicationContext appContext: Conte
             }
         }
     }
+
+    inline fun <reified T> get(key: Preferences.Key<T>, default: T) =
+        dataStore.data.map { (it[key] ?: default) }
+
+    suspend inline fun <reified T> set(
+        key: Preferences.Key<T>,
+        value: T,
+    ) {
+        dataStore.edit {
+            it[key] = value
+        }
+    }
 }
+
 
 
 enum class Example {
@@ -72,7 +90,7 @@ enum class Example {
 }
 
 
-inline fun <reified T : Any> myPreferenceDataStore(
+inline fun <reified T : Any> myDataStoreValue(
     defaultValue: T,
 ) = object : ReadWriteProperty<DataStoreManager, T> {
 
@@ -87,7 +105,7 @@ inline fun <reified T : Any> myPreferenceDataStore(
     }
 }
 
-inline fun <reified T : Enum<T>> myPreferenceDataStore(
+inline fun <reified T : Enum<T>> myDataStoreValue(
     defaultValue: T,
 ) = object : ReadWriteProperty<DataStoreManager, T> {
 
@@ -105,7 +123,7 @@ inline fun <reified T : Enum<T>> myPreferenceDataStore(
     }
 }
 
-inline fun <reified T> myPreferenceDataStore(
+inline fun <reified T> myDataStoreValue(
     gson: Gson
 ) = object : ReadWriteProperty<DataStoreManager, T?> {
 
@@ -131,7 +149,6 @@ inline fun <reified T> myPreferenceDataStore(
         }
     }
 }
-
 
 
 
